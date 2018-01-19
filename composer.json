@@ -1,0 +1,14 @@
+{
+    "name": "mikemirten/doctrine-criteria-serializer-bundle",
+    "type": "library",
+    "require": {
+        "mikemirten/doctrine-criteria-serializer": ">=0.3",
+        "sensio/framework-extra-bundle": "^5.1"
+    },
+
+    "autoload": {
+        "psr-4": {
+            "Mikemirten\\Bundle\\DoctrineCriteriaSerializerBundle\\": "src/"
+        }
+    }
+}
