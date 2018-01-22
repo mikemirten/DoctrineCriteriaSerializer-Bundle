@@ -1,0 +1,21 @@
+parameters:
+    mrtn_doctrine_criteria.katharsis.deserializer.class: 'Mikemirten\Component\DoctrineCriteriaSerializer\KatharsisQuery\KatharsisQueryDeserializer'
+
+    mrtn_json_api.document.parameter_converter.class: 'Mikemirten\Bundle\DoctrineCriteriaSerializerBundle\Request\CriteriaParameterConverter'
+
+services:
+    mrtn_doctrine_criteria.deserializer:
+        alias:  'mrtn_doctrine_criteria.katharsis.deserializer'
+        public: true
+
+    mrtn_doctrine_criteria.katharsis.deserializer:
+        class:  '%mrtn_doctrine_criteria.katharsis.deserializer.class%'
+        public: false
+
+    mrtn_json_api.document.parameter_converter:
+        class: '%mrtn_json_api.document.parameter_converter.class%'
+        public: false
+        arguments:
+            - '@mrtn_doctrine_criteria.deserializer'
+        tags:
+            - { name: 'request.param_converter' }
