@@ -5,6 +5,7 @@ namespace Mikemirten\Bundle\DoctrineCriteriaSerializerBundle\Request;
 
 use Doctrine\Common\Collections\Criteria;
 use Mikemirten\Component\DoctrineCriteriaSerializer\CriteriaDeserializer;
+use Mikemirten\Component\DoctrineCriteriaSerializer\DeserializationContext;
 use Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryException;
 use PHPUnit\Framework\TestCase;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
@@ -43,7 +44,6 @@ class CriteriaParameterConverterTest extends TestCase
         $request       = $this->createMock(Request::class);
         $configuration = $this->createMock(ParamConverter::class);
         $deserializer  = $this->createMock(CriteriaDeserializer::class);
-        $criteria      = $this->createMock(Criteria::class);
 
         $request->method('getQueryString')
             ->willReturn('filter[test]=1');
@@ -55,12 +55,17 @@ class CriteriaParameterConverterTest extends TestCase
 
         $request->attributes->expects($this->once())
             ->method('set')
-            ->with('testCriteria', $criteria);
+            ->with(
+                'testCriteria',
+                $this->isInstanceOf(Criteria::class)
+            );
 
         $deserializer->expects($this->once())
             ->method('deserialize')
-            ->with('filter[test]=1')
-            ->willReturn($criteria);
+            ->with(
+                'filter[test]=1',
+                $this->isInstanceOf(Criteria::class)
+            );
 
         $converter = new CriteriaParameterConverter($deserializer);
         $converter->apply($request, $configuration);
@@ -109,5 +114,61 @@ class CriteriaParameterConverterTest extends TestCase
         $converter = new CriteriaParameterConverter($deserializer);
 
         $this->assertFalse($converter->supports($configuration));
+    }
+
+    /**
+     * @depends testApply
+     */
+    public function testApplyWithContext()
+    {
+        $request       = $this->createMock(Request::class);
+        $configuration = $this->createMock(ParamConverter::class);
+        $deserializer  = $this->createMock(CriteriaDeserializer::class);
+        $context       = $this->createMock(DeserializationContext::class);
+
+        $request->method('getQueryString')
+            ->willReturn('filter[test]=1');
+
+        $request->attributes = $this->createMock(ParameterBag::class);
+
+        $deserializer->expects($this->once())
+            ->method('deserialize')
+            ->with(
+                'filter[test]=1',
+                $this->isInstanceOf(Criteria::class),
+                $context
+            );
+
+        $configuration->method('getOptions')
+            ->willReturn(['context' => 'testContext']);
+
+        $converter = new CriteriaParameterConverter($deserializer);
+        $converter->registerContext('testContext', $context);
+        $converter->apply($request, $configuration);
+    }
+
+    /**
+     * @depends testApply
+     * @expectedException \LogicException
+     */
+    public function testApplyWithUnknownContext()
+    {
+        $request       = $this->createMock(Request::class);
+        $configuration = $this->createMock(ParamConverter::class);
+        $deserializer  = $this->createMock(CriteriaDeserializer::class);
+
+        $request->method('getQueryString')
+            ->willReturn('filter[test]=1');
+
+        $request->attributes = $this->createMock(ParameterBag::class);
+
+        $deserializer->expects($this->never())
+            ->method('deserialize');
+
+        $configuration->method('getOptions')
+            ->willReturn(['context' => 'testContext']);
+
+        $converter = new CriteriaParameterConverter($deserializer);
+        $converter->apply($request, $configuration);
     }
 }

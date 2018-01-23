@@ -3,6 +3,7 @@ declare(strict_types = 1);
 
 namespace Mikemirten\Bundle\DoctrineCriteriaSerializerBundle\DependencyInjection;
 
+use Mikemirten\Bundle\DoctrineCriteriaSerializerBundle\DependencyInjection\Compiler\ContextCompilerPass;
 use Mikemirten\Component\DoctrineCriteriaSerializer\CriteriaDeserializer;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -18,7 +19,6 @@ class ConfigurationTest extends TestCase
      *
      * @dataProvider getConfiguration
      *
-     * @param array  $configuration
      * @param string $environment
      */
     public function testConfiguration(string $environment)
@@ -27,15 +27,17 @@ class ConfigurationTest extends TestCase
         $builder->setParameter('kernel.cache_dir', '/tmp');
         $builder->setParameter('kernel.environment', $environment);
 
+        $builder->addCompilerPass(new ContextCompilerPass());
         $builder->registerExtension(new SerializerExtension());
         $builder->loadFromExtension(SerializerExtension::ALIAS);
 
         $builder->compile();
 
-        $this->assertInstanceOf(
-            CriteriaDeserializer::class,
-            $builder->get('mrtn_doctrine_criteria.deserializer')
-        );
+        $deserializer = $builder->get('mrtn_doctrine_criteria.deserializer');
+
+        // TODO: Add test of deserializer run with test context registered
+
+        $this->assertInstanceOf(CriteriaDeserializer::class, $deserializer);
     }
 
     /**

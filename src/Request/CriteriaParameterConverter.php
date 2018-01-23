@@ -4,7 +4,9 @@ declare(strict_types = 1);
 namespace Mikemirten\Bundle\DoctrineCriteriaSerializerBundle\Request;
 
 use Doctrine\Common\Collections\Criteria;
+use Mikemirten\Component\DoctrineCriteriaSerializer\Context\DummyDeserializationContext;
 use Mikemirten\Component\DoctrineCriteriaSerializer\CriteriaDeserializer;
+use Mikemirten\Component\DoctrineCriteriaSerializer\DeserializationContext as Context;
 use Mikemirten\Component\DoctrineCriteriaSerializer\Exception\InvalidQueryException;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
 use Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter\ParamConverterInterface;
@@ -25,6 +27,11 @@ class CriteriaParameterConverter implements ParamConverterInterface
     protected $deserializer;
 
     /**
+     * @var Context[]
+     */
+    protected $contexts = [];
+
+    /**
      * CriteriaParameterConverter constructor.
      *
      * @param CriteriaDeserializer $deserializer
@@ -35,11 +42,34 @@ class CriteriaParameterConverter implements ParamConverterInterface
     }
 
     /**
+     * Register deserialization context
+     *
+     * @param string  $name
+     * @param Context $context
+     */
+    public function registerContext(string $name, Context $context): void
+    {
+        $this->contexts[$name] = $context;
+    }
+
+    /**
      * {@inheritdoc}
      */
     public function apply(Request $request, ParamConverter $configuration)
     {
-        $criteria = $this->createCriteria($request);
+        $query = $request->getQueryString();
+
+        if ($query === null || trim($query) === '') {
+            $request->attributes->set(
+                $configuration->getName(),
+                Criteria::create()
+            );
+
+            return true;
+        }
+
+        $context  = $this->getContext($configuration);
+        $criteria = $this->createCriteria($query, $context);
 
         $request->attributes->set($configuration->getName(), $criteria);
         return true;
@@ -48,24 +78,46 @@ class CriteriaParameterConverter implements ParamConverterInterface
     /**
      * Create criteria by request
      *
-     * @param  Request $request
+     * @param  string  $query
+     * @param  Context $context
      * @return Criteria
      * @throws BadRequestHttpException
      */
-    protected function createCriteria(Request $request): Criteria
+    protected function createCriteria(string $query, Context $context): Criteria
     {
-        $query = $request->getQueryString();
-
-        if ($query === null) {
-            return Criteria::create();
-        }
+        $criteria = Criteria::create();
 
         try {
-            return $this->deserializer->deserialize($query);
+            $this->deserializer->deserialize($query, $criteria, $context);
         }
         catch (InvalidQueryException $exception) {
             throw new BadRequestHttpException('Query deserialization error: ' . $exception->getMessage(), $exception);
         }
+
+        return $criteria;
+    }
+
+    /**
+     * Get deserialization context
+     *
+     * @param  ParamConverter $configuration
+     * @return Context
+     */
+    protected function getContext(ParamConverter $configuration): Context
+    {
+        $options = $configuration->getOptions();
+
+        if (! isset($options['context'])) {
+            return new DummyDeserializationContext();
+        }
+
+        $name = trim($options['context']);
+
+        if (! isset($this->contexts[$name])) {
+            throw new \LogicException(sprintf('Deserialization context named by "%s" not found.', $name));
+        }
+
+        return $this->contexts[$name];
     }
 
     /**
