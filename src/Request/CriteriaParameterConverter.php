@@ -58,10 +58,8 @@ class CriteriaParameterConverter implements ParamConverterInterface
             return Criteria::create();
         }
 
-        $deserializer = new KatharsisQueryDeserializer();
-
         try {
-            return $deserializer->deserialize($query);
+            return $this->deserializer->deserialize($query);
         }
         catch (InvalidQueryException $exception) {
             throw new BadRequestHttpException('Query deserialization error: ' . $exception->getMessage(), $exception);
