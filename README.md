@@ -35,14 +35,50 @@ class AppKernel extends Kernel
 The bundle provides a [parameter converter](http://symfony.com/doc/current/bundles/SensioFrameworkExtraBundle/annotations/converters.html) to unserialize HTTP query into an instance of [Criteria](http://docs.doctrine-project.org/projects/doctrine-orm/en/latest/reference/working-with-associations.html#filtering-collections).
 
 ```php
-
 namespace AppBundle\Controller;
 
 use Doctrine\Common\Collections\Criteria
 
 class AuthorController
 {
-    public function find(Author $author, Criteria $criteria): Response
+    /**
+     * Repository of authors
+     *
+     * @var AuthorRepository $authorRepository
+     */
+    protected $authorRepository;
+
+    /**
+     * Constructor
+     *
+     * @param AuthorRepository $authorRepository
+     */
+    public function __construct(AuthorRepository $authorRepository)
+    {
+        $this->authorRepository = $authorRepository;
+    }
+    
+    /**
+     * Find authors
+     *
+     * @param  Criteria $criteria
+     * @return Response
+     */
+    public function find(Criteria $criteria): Response
+    {
+        $authors = $this->authorRepository->matching($criteria);
+        
+        // ...
+    }
+
+    /**
+     * Find books of given author
+     *
+     * @param  Author   $author
+     * @param  Criteria $criteria
+     * @return Response
+     */
+    public function findBooks(Author $author, Criteria $criteria): Response
     {
         $books = $author->getBooks()->matching($criteria);
         
